@@ -33,9 +33,12 @@ start_user:
 
 .global	sys_call
 sys_call:
-	??????
+svc #0
+bx lr
 
 .type svc_handler, %function
 .global svc_handler
 svc_handler:
-	??????
+movs r0, lr 
+b svc_handler_c //branch 到c語言裡面的svc svc_handler
+//  回傳的值可以判斷是屬於 msp or psp

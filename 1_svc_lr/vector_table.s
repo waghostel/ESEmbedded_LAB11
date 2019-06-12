@@ -42,9 +42,9 @@
 
 /*********************************************************/
 
-.weak	svc_handler
+.weak	svc_handler //weak 可以使用者另外撰寫的handler覆蓋
 .thumb_set	svc_handler,default_handler
-.word svc_handler
+.word svc_handler //scv handler
 
 /*********************************************************/
 

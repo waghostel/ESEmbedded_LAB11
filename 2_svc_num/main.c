@@ -12,24 +12,30 @@ int main(void)
 	extern uint32_t _msp_init;
 
 	uint32_t *msp_init = &_msp_init;
-	uint32_t *psp_init = msp_init - 8 * 1024;
+
+	//Initialization of psp
+	uint32_t *psp_init = msp_init - 8 * 1024; 
 
 	init_usart1();
 
+	//Privileged mode
 	printf("[Kernel] Start in privileged thread mode.\r\n\n");
-
 	printf("[Kernel] Control: 0x%X \r\n", (unsigned int)read_ctrl());
 	printf("[Kernel] SP: 0x%X \r\n", (unsigned int)read_sp());
 	printf("[Kernel] MSP: 0x%X \r\n", (unsigned int)read_msp());
 	printf("[Kernel] PSP: 0x%X \r\n\n", (unsigned int)read_psp());
-
 	printf("[Kernel] SVC 0.\r\n\n");
 	printf("[Kernel] SVC return %d.\r\n\n", (int)sys_call());
 
+	//Unprivileged thread
 	printf("[Kernel] Switch to unprivileged thread mode & start user task with psp.\r\n\n");
 
 	//start user task
 	start_user((uint32_t *)user_task, psp_init);
+	/*
+	(uint32_t *)user_task: pointer to point to the user_task function
+	
+	 */
 
 	while (1) //should not go here
 		;
@@ -50,42 +56,48 @@ void user_task(void)
 	blink(LED_BLUE); //should not return
 }
 
-void svc_handler_c(??????, ??????)
+void svc_handler_c(uint32_t lr, uint32_t msp)
 {
-	printf("[SVC Handler] LR: 0x%X\r\n", (unsigned int)??????);
-	printf("[SVC Handler] MSP Backup: 0x%X \r\n", (unsigned int)??????);
+	printf("[SVC Handler] LR: 0x%X\r\n", (unsigned int)lr);
+	printf("[SVC Handler] MSP Backup: 0x%X \r\n", (unsigned int)msp);
 	printf("[SVC Handler] Control: 0x%X\r\n", (unsigned int)read_ctrl());
 	printf("[SVC Handler] SP: 0x%X \r\n", (unsigned int)read_sp());
 	printf("[SVC Handler] MSP: 0x%X \r\n", (unsigned int)read_msp());
 	printf("[SVC Handler] PSP: 0x%X \r\n\n", (unsigned int)read_psp());
 
+	
 	uint32_t *stack_frame_ptr;
-	if (??????) //Test bit 2 of EXC_RETURN
+
+	if (lr & 0b100) //Test bit 2 of EXC_RETURN
 	{
-		stack_frame_ptr = ?????? //if 1, stacking used PSP
+		stack_frame_ptr = (uint32_t *) read_psp(); //if 1, stacking used PSP
 		printf("[SVC Handler] Stacking used PSP: 0x%X \r\n\n", (unsigned int)stack_frame_ptr);
 	}
 	else
 	{
-		stack_frame_ptr = ?????? //if 0, stacking used MSP
+		stack_frame_ptr = (uint32_t *)read_msp(); //if 0, stacking used MSP
 		printf("[SVC Handler] Stacking used MSP: 0x%X \r\n\n", (unsigned int)stack_frame_ptr);
 	}
 
-	uint32_t stacked_r0 = ??????
-	uint32_t stacked_r1 = ??????
-	uint32_t stacked_return_addr = ??????
+	uint32_t stacked_r0 = stack_frame_ptr[0];
+	uint32_t stacked_r1 = stack_frame_ptr[1];
+	uint32_t stacked_return_addr = stack_frame_ptr[7];
 
-	uint16_t svc_instruction = ??????
-	uint8_t svc_num = ??????
+
+	//讀取return address的前一個位置的值
+	uint16_t svc_instruction = *(((uint16_t *)stacked_return_addr)-1);
+
+	//只讀取svc_instruction的最後8 bit
+	uint8_t svc_num = (uint8_t)svc_instruction;
 
 	printf("[SVC Handler] Stacked R0: 0x%X \r\n", (unsigned int)stacked_r0);
 	printf("[SVC Handler] Stacked R1: 0x%X \r\n", (unsigned int)stacked_r1);
 	printf("[SVC Handler] SVC number: 0x%X \r\n\n", (unsigned int)svc_num);
 
 	if (svc_num == 0xA)
-		//return r0 + r1
-		??????
+		//return r0 + r1 ?
+		stack_frame_ptr[0]=stacked_r0 + stacked_r1;
 	else
-		//return 0
-		??????
+		//return 0 ?
+		stack_frame_ptr[0]=0;
 }
